@@ -1,0 +1,17 @@
+Milestones: 
+-Moved our GitHub and data onto the cluster.
+-Created a Python program that takes processed data and loads it in as dataloaders.
+-Created a baseline for the model using a majority class baseline. The baseline for our data ended up being 0.5%.
+
+Progress Upcoming Milestones:
+-Our goal for the upcoming milestone is to create a skeleton of the model. Over the next week, Archan and Ethan will be working on implementing classes to create the linear layers and train the model using few shot learning with prototypical networks.
+
+Who Worked on What:
+-Jonah and Archan helped to trouble shoot moving the data from the Kaggle website to the cluster.
+-Ethan moved the data onto the cluster using SCP.
+-Michael shared his screen and worked on the python program while we were all on a call. He coded the file to load the data in as dataloaders.
+-On the same call and sharing his screen, Michael also created a function to evaluate a baseline for the model using a majority class baseline. 
+
+Obstacles:
+-One obstacle is that we have not read much about few shot learning with prototypical networks. We plan to use the next week to learn more about both methods and how we can best use them in image recognition.
+-Another obstacle is that none of us know how to use Condor to schedule jobs on the cluster. We plan on having Jonah learn how to use Condor over the weekend.
