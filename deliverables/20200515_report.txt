@@ -1,0 +1,18 @@
+Milestones:
+-We created skeleton classes/definitions for all needed parts of the project.
+-We gained an understanding of how to run jobs using WWU condor system.
+-We gained a better understanding of the terminology surrounding few-shot learning.
+
+Progress on Upcoming Milestones:
+-The majority of the code for the skeleton classes was filled out.
+-What remains is writing code to train,test, and save the model.
+-We are getting familiar with the condor system and how to run our models with the WWU cluster.
+
+Who Worked on What:
+-Archan  and  Ethan  worked  on  figuring  out  the  prototypical  networks  and  understanding  few  shot learning through research papers, presentations, github repositories, and Dr.  Hutchinson’s office hours.
+-Michael  wrote  the  skeleton  code  for  the  program. This  includes  the  initialization  functions,  utility functions, and the convolutional model. He also updated the argument parser to include the necessary arguments for few shot learning.
+-Jonah worked on figuring out how to use the WWU condor system and how to use the Hutchinsonfly.py repository.
+
+Obstacles:
+-All  of  us  have  a  large  workload  to  balance  from  our  various  classes,  making  it  difficult  to  meet  to discuss the project and to actually spend the time necessary on the project.
+-Easily digestible information about few-shot learning is difficult to find. Most of the papers about it are highly technical and the code that we could find was extremely complicated and hard to understand.
