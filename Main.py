@@ -72,11 +72,39 @@ def init_optim(args, model)
 def init_lr_scheduler(args, optim)
     return torch.optim.lr_scheduler.StepLR(optimizer=optim, gamma=args.lr_scheduler_gamma, step_size=args.lr_scheduler_step)
 
-def train()
+# k-shot (number of examples per class)
+# n-way (number of classes)
+def get_episode(n,k)
+     C = # randomly sample n classes
+     X = # randomly sample 2*k (image,label) pairs from each class in C
+     S = # randomly take k of the (image,label) pairs for each class from X # support
+     Q = # take the remaining k classes' data from X # query set
 
+     return S,Q
+
+		 
+def train(my_train)
+	for S,Q in my_train:
+		# embed all images in S to produce n prototypes
+		# embed all images in Q and compute the posterior probabilities
+
+	# loop over classes
+
+         # compute loss for all k*n query images
+         # backprop
+         # update weights
+		 
+	# loop over classes
+
+         # compute loss for all k*n query images
+         # compute acuracy for the k*n query images
+		 
 def test()
 
 def eval()
+	for S,Q in my_dev:
+		# embed all images in S to produce n prototypes
+        # embed all images in Q and computer the posterior probabilities
 
 def main():
     # Parse arguments
@@ -97,11 +125,15 @@ def main():
     optim = init_optim(args, model)
     lr_scheduler = init_lr_scheduler(args, optim)
     result = train(args, train_loader, valid_loader, model, optim, lr_scheduler)
+	
     best_state, best_acc, train_loss, train_acc, val_loss, val_acc = result
-    print("Testing with current model")
+    
+	print("Testing with current model")
     test(args, test_loader, model)
-    model.load_state_dict(best_state)
-    print("Testing with best model")
+    
+	model.load_state_dict(best_state)
+    
+	print("Testing with best model")
     test(args, test_loader, model)
 
 if __name__ == "__main__":
