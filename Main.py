@@ -66,30 +66,37 @@ def init_protonet()
     model = ProtoNet().to(device)
     return model
 
-def init_optim(args, model)
-    return torch.optim.Adam(params=model.parameters(), lr=args.lr)
-
-def init_lr_scheduler(args, optim)
-    return torch.optim.lr_scheduler.StepLR(optimizer=optim, gamma=args.lr_scheduler_gamma, step_size=args.lr_scheduler_step)
 
 # k-shot (number of examples per class)
 # n-way (number of classes)
-def get_episode(n,k)
-     C = # randomly sample n classes
-     X = # randomly sample 2*k (image,label) pairs from each class in C
-     S = # randomly take k of the (image,label) pairs for each class from X # support
-     Q = # take the remaining k classes' data from X # query set
+def get_episode(n,k, dataset)
+     C = random.sample(dataset, n)	# randomly sample n classes
+	 X = None
+     for i in range(len(C)):
+		X[i] = random.sample(C[i], 2*k) # randomly sample 2*k (image,label) pairs from each class in C
+	 
+	 S = None
+     for i in range(len(X)):
+		S[i] = random.sample(X[i], k) # randomly take k of the (image,label) pairs for each class from X # support
+	 
+	 Q = None
+	 for i in range(len(X)):
+		for j in range(len(X[0])):
+			if X[i][j] not in S[i]:
+				Q[i].append(X[i][j]) # take the remaining k classes' data from X # query set
 
      return S,Q
 
 		 
-def train(my_train)
-	for S,Q in my_train:
+def train(my_train, args, my_valid, model)
+	#for S,Q in my_train:
 		# embed all images in S to produce n prototypes
 		# embed all images in Q and compute the posterior probabilities
 
 	# loop over classes
-
+	for _ in range(args.its):
+		S,Q = get_episode(args.n, args.k, my_train)
+		
          # compute loss for all k*n query images
          # backprop
          # update weights
@@ -122,9 +129,7 @@ def main():
 
     # Create model
     model = init_protonet()
-    optim = init_optim(args, model)
-    lr_scheduler = init_lr_scheduler(args, optim)
-    result = train(args, train_loader, valid_loader, model, optim, lr_scheduler)
+    result = train(train_loader, args, valid_loader, model)
 	
     best_state, best_acc, train_loss, train_acc, val_loss, val_acc = result
     

@@ -23,17 +23,8 @@ def parse_all_args():
                 help="The number of training epochs (int) [default: 100]", default=100)
     parser.add_argument('-its', type=int,
                 help='number of episodes per epoch, default=100', default=100)
-    parser.add_argument('-cTr', type=int,
-                help='number of random classes per episode for training, default=60', default=60)
-    parser.add_argument('-nsTr', type=int,
-                help='number of samples per class to use as support for training, default=5', default=5)
-    parser.add_argument('-nqTr', type=int,
-                help='number of samples per class to use as query for training, default=5', default=5)
-    parser.add_argument('-cVa', type=int,
-                help='number of random classes per episode for validation, default=5', default=5)
-    parser.add_argument('-nsVa', type=int,
-                help='number of samples per class to use as support for validation, default=5', default=5)
-    parser.add_argument('-nqVa', type=int,
-                help='number of samples per class to use as query for validation, default=15', default=15)
-
+    parser.add_argument('-n', type=int,
+                help='number of classes to use, default=5', default=5)
+    parser.add_argument('-k', type=int,
+                help='number of examples per class, default=5', default=5)
     return parser.parse_args()
