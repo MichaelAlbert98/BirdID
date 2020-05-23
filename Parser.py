@@ -15,14 +15,10 @@ def parse_all_args():
                 help="The root to store models (str) [default: ../models", default="../models")
     parser.add_argument("-lr",type=float,
                 help="The learning rate (float) [default: 0.001]", default=0.001)
-    parser.add_argument('-lrS',type=int,
-                help='StepLR learning rate scheduler step, default=20', default=20)
-    parser.add_argument("-mb",type=int,\
-            help="The minibatch size (int) [default: 32]",default=32)
-    parser.add_argument("-epochs",type=int,
-                help="The number of training epochs (int) [default: 100]", default=100)
-    parser.add_argument('-its', type=int,
-                help='number of episodes per epoch, default=100', default=100)
+    parser.add_argument("-its",type=int,
+                help="The number of training iterations (int) [default: 100]", default=100)
+    parser.add_argument('-eps', type=int,
+                help='number of episodes per iteration, default=100', default=100)
     parser.add_argument('-n', type=int,
                 help='number of classes to use, default=5', default=5)
     parser.add_argument('-k', type=int,
