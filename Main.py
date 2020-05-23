@@ -42,33 +42,16 @@ def baseline(path):
 
 def init_dataset(folder)
     dataset = tv.datasets.ImageFolder(root=folder,transform=None)
-    n_classes = len(np.unique(dataset.y))
-    if n_classes < opt.classes_per_it_tr or n_classes < opt.classes_per_it_val:
-        raise(Exception('There are not enough classes in the dataset in order ' +
-                        'to satisfy the chosen classes_per_it. Decrease the ' +
-                        'classes_per_it_{tr/val} option and try again.'))
     return dataset
-
-def init_dataloader(args, mode)
-    if 'train' in mode:
-        dataset = init_dataset(args.tr)
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.mb, shuffle=True, drop_last=False)
-    elif 'valid' in mode:
-        dataset = init_dataset(args.va)
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.mb, shuffle=True, drop_last=False)
-    else:
-        dataset = init_dataset(args.te)
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.mb, shuffle=False, drop_last=False)
-    return dataloader
 
 def init_protonet()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = ProtoNet().to(device)
     return model
 
-
 # k-shot (number of examples per class)
 # n-way (number of classes)
+# note: needs to be updated to use permute to get S/Q instead of current method
 def get_episode(n,k, dataset)
      C = random.sample(dataset, n)	# randomly sample n classes
 	 X = None
@@ -77,7 +60,7 @@ def get_episode(n,k, dataset)
 	 
 	 S = None
      for i in range(len(X)):
-		S[i] = random.sample(X[i], k) # randomly take k of the (image,label) pairs for each class from X # support
+		S[i] = random.sample(X[i], k) # randomly take k of the (image,label) pairs for each class from X # support set
 	 
 	 Q = None
 	 for i in range(len(X)):
@@ -88,30 +71,45 @@ def get_episode(n,k, dataset)
      return S,Q
 
 		 
-def train(my_train, args, my_valid, model)
-	#for S,Q in my_train:
-		# embed all images in S to produce n prototypes
-		# embed all images in Q and compute the posterior probabilities
+def train(model, train, valid, args)
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adadelta(model.parameters(), lr=args.lr)
 
-	# loop over classes
+	# loop over iterations
 	for _ in range(args.its):
-		S,Q = get_episode(args.n, args.k, my_train)
-		
-         # compute loss for all k*n query images
-         # backprop
-         # update weights
-		 
-	# loop over classes
+        # loop over episodes
+        for _ in range(args.eps)
+		    S,Q = get_episode(args.n, args.k, train)
 
-         # compute loss for all k*n query images
-         # compute acuracy for the k*n query images
+            # embed S/Q
+            for i in range(len(S)):
+                allS = model(S[i])
+                embedS[i] = torch.sum(allS, 1)/len(S[i]) # take average of S to create n prototypes
+                embedQ[i] = model(Q[i])
+            embedQ2 = embedQ.reshape(len(embedQ)*len(embedQ[0]))
+
+            # find euclidean distance to each S for each Q
+            for i in range(len(embedQ2)):
+                for j in range(len(embedS)):
+                    euclid[i][j] = -1*euclidean_dist(embedQ2[i], embedS[j])
+
+            # compute loss for all k*n query images
+            loss = 0
+            for i in range len(euclid):
+                loss += (1/args.n*args.k)*criterion(euclid[i], i//args.n)
+
+            # backprop and update weights
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
 		 
 def test()
 
 def eval()
 	for S,Q in my_dev:
 		# embed all images in S to produce n prototypes
-        # embed all images in Q and computer the posterior probabilities
+        # embed all images in Q and compute the posterior probabilities
 
 def main():
     # Parse arguments
@@ -123,13 +121,13 @@ def main():
     # print(basepercent)
 
     # Load data
-    train_loader = init_dataloader(args, 'train')
-    valid_loader = init_dataloader(args, 'valid')
-    test_loader = init_dataloader(args, 'test') 
+    train = init_dataset(args.tr)
+    valid = init_dataset(args.va)
+    test = init_dataset(args.te) 
 
     # Create model
     model = init_protonet()
-    result = train(train_loader, args, valid_loader, model)
+    result = train(model, train, valid, args)
 	
     best_state, best_acc, train_loss, train_acc, val_loss, val_acc = result
     
