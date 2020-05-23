@@ -1,0 +1,16 @@
+Milestones:
+-We have worked to flesh out the skeletal functions and pseudo-code the process of the functions.
+-We have the functions working to set up episodes
+-We have not begun conducting experimental results, but met with Dr. Hutchinson twice this week in order to ensure we are still tracking in the right direction even though we are behind on milestones.
+
+Progress on Upcoming Milestones:
+-Our functions are still being created and we haven’t been able to test our model’s functionality and accuracy as of now.
+
+Who Worked on What:
+-Met as a group in Dr. Hutchinson’s office hours to work to better understand the implementation ofa prototypical network.
+-Archan, Ethan, Jonah, and River met in order to discuss and incorporate Dr.  Hutchinson’s feedback and how it would apply to the skeletons already developed.
+-Later in the week the group met and worked on converting our pseudo code into code that we can run.
+-Michael set up the train method, created a vgg11 model, and streamlined the majority of the code.
+
+Obstacles:
+-It works best for us to meet with a couple people together or the whole group because it is difficult for some group members to work on it solo given the complicated content. This has limited our time spent coding this week due to the many assignments to balance.
