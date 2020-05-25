@@ -20,10 +20,14 @@ import torch
 import torchvision as tv
 import sys
 import os
+import random
 import numpy as np
-from parser import parse_all_args
+from Parser import parse_all_args
 from Utils import euclidean_dist
-from protonet import ProtoNet
+from Model import vgg11
+from Batch_Sampler import PrototypicalBatchSampler
+# debugging
+import pdb
 
 def baseline(path):
     # Determine baseline of data
@@ -40,76 +44,109 @@ def baseline(path):
             name = filenames
     return len(name), maxSize
 
-def init_dataset(folder)
-    dataset = tv.datasets.ImageFolder(root=folder,transform=None)
+def init_dataset(args, path):
+    dataset = tv.datasets.ImageFolder(root=path,transform=tv.transforms.ToTensor())
     return dataset
 
-def init_protonet()
+def init_sampler(args, dataset):
+    classes_per_it = args.n
+    num_samples = 2*args.k
+    return PrototypicalBatchSampler(dataset=dataset,
+                                    classes_per_it=classes_per_it,
+                                    num_samples=num_samples,
+                                    iterations=args.its)
+
+
+def init_dataloader(args, path):
+    dataset = init_dataset(args, path)
+    sampler = init_sampler(args, dataset)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_sampler=sampler)
+    return dataloader
+
+def init_model():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = ProtoNet().to(device)
+    model = vgg11().to(device)
     return model
 
 # k-shot (number of examples per class)
 # n-way (number of classes)
 # note: needs to be updated to use permute to get S/Q instead of current method
-def get_episode(n,k, dataset)
-     C = random.sample(dataset, n)	# randomly sample n classes
-	 X = None
-     for i in range(len(C)):
-		X[i] = random.sample(C[i], 2*k) # randomly sample 2*k (image,label) pairs from each class in C
-	 
-	 S = None
-     for i in range(len(X)):
-		S[i] = random.sample(X[i], k) # randomly take k of the (image,label) pairs for each class from X # support set
-	 
-	 Q = None
-	 for i in range(len(X)):
-		for j in range(len(X[0])):
-			if X[i][j] not in S[i]:
-				Q[i].append(X[i][j]) # take the remaining k classes' data from X # query set
+# def get_episode(n,k, dataset):
 
-     return S,Q
+#     #debugging
+#     pdb.set_trace()
+#     num_classes = len(dataset.classes)
+#     C = torch.randperm(num_classes)[:5] # randomly sample n classes
+#     X = torch.LongTensor(n)
+#     for i in range(len(C)):
+# 	    X[i] =  # random.sample(C[i], 2*k) # randomly sample 2*k (image,label) pairs from each class in C
+	 
+#     S = None
+#     for i in range(len(X)):
+#        S[i] = random.sample(X[i], k) # randomly take k of the (image,label) pairs for each class from X (support set)
+	 
+#     Q = None
+#     for i in range(len(X)):
+#         for j in range(len(X[0])):
+#             if X[i][j] not in S[i]:
+#                 Q[i].append(X[i][j]) # take the remaining k classes' data from X (query set)
+
+#     return S,Q
 
 		 
-def train(model, train, valid, args)
+def train(model, tr_loader, va_loader, args):
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adadelta(model.parameters(), lr=args.lr)
 
 	# loop over iterations
-	for _ in range(args.its):
+    for _ in range(args.its):
         # loop over episodes
-        for _ in range(args.eps)
-		    S,Q = get_episode(args.n, args.k, train)
-
+        episodes = iter(tr_loader)
+        for epi in episodes:
+            epi[0] = epi[0].reshape(args.n, args.k*2, 224, 224, 3)
+            S = epi[0][:, :args.n, :, :, :]
+            Q = epi[0][:, args.n:, :, :, :]
+            S = S.transpose(2,4)
+            S = S.transpose(3,4)
+            Q = Q.transpose(2,4)
+            Q = Q.transpose(3,4)
             # embed S/Q
-            for i in range(len(S)):
+            embedS = torch.zeros(args.n, 4096)         # is there a way to not hardcode this?
+            embedQ = torch.zeros(args.n, args.n, 4096) # '                                  '
+            for i in range(S.size(0)):
                 allS = model(S[i])
-                embedS[i] = torch.sum(allS, 1)/len(S[i]) # take average of S to create n prototypes
+                embedS[i] = torch.sum(allS, 0)/len(S[i]) # take average of S to create n prototypes
                 embedQ[i] = model(Q[i])
-            embedQ2 = embedQ.reshape(len(embedQ)*len(embedQ[0]))
 
             # find euclidean distance to each S for each Q
-            for i in range(len(embedQ2)):
-                for j in range(len(embedS)):
-                    euclid[i][j] = -1*euclidean_dist(embedQ2[i], embedS[j])
+            euclid = torch.zeros(args.n, args.k, args.n)
+            for i in range(len(embedQ)):
+                for j in range(len(embedQ[0])):
+                    for k in range(len(embedS)):
+                        euclid[i][j][k] = -1*euclidean_dist(embedQ[i][j], embedS[k])
 
             # compute loss for all k*n query images
             loss = 0
-            for i in range len(euclid):
-                loss += (1/args.n*args.k)*criterion(euclid[i], i//args.n)
+            for i in range(len(euclid)):
+                for j in range(len(euclid[0])):
+                    for k in range(len(euclid[0][0])):
+                        loss += (1/args.n*args.k)*criterion(euclid[i][j:j+1], torch.tensor([k]))
 
+            #pdb.set_trace() debug
             # backprop and update weights
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
 		 
-def test()
+def test():
+    return None
 
-def eval()
-	for S,Q in my_dev:
-		# embed all images in S to produce n prototypes
-        # embed all images in Q and compute the posterior probabilities
+def eval():
+    return None
+    #for S,Q in my_dev:
+    # embed all images in S to produce n prototypes
+    # embed all images in Q and compute the posterior probabilities
 
 def main():
     # Parse arguments
@@ -121,23 +158,23 @@ def main():
     # print(basepercent)
 
     # Load data
-    train = init_dataset(args.tr)
-    valid = init_dataset(args.va)
-    test = init_dataset(args.te) 
+    train_loader = init_dataloader(args, args.tr)
+    valid_loader = init_dataloader(args, args.va)
+    test_loader = init_dataloader(args, args.te) 
 
     # Create model
-    model = init_protonet()
-    result = train(model, train, valid, args)
+    model = init_model()
+    train(model, train_loader, valid_loader, args)
 	
-    best_state, best_acc, train_loss, train_acc, val_loss, val_acc = result
+    #best_state, best_acc, train_loss, train_acc, val_loss, val_acc = result
     
-	print("Testing with current model")
-    test(args, test_loader, model)
+	# print("Testing with current model")
+    # test(args, test_loader, model)
     
-	model.load_state_dict(best_state)
+	# model.load_state_dict(best_state)
     
-	print("Testing with best model")
-    test(args, test_loader, model)
+	# print("Testing with best model")
+    # test(args, test_loader, model)
 
 if __name__ == "__main__":
     main()
