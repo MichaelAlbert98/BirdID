@@ -44,22 +44,29 @@ def baseline(path):
             name = filenames
     return len(name), maxSize
 
-def init_dataset(args, path):
+def init_dataset(path):
     dataset = tv.datasets.ImageFolder(root=path,transform=tv.transforms.ToTensor())
     return dataset
 
-def init_sampler(args, dataset):
-    classes_per_it = args.n
-    num_samples = 2*args.k
+def init_sampler(n, k, eps, dataset):
+    classes_per_it = n
+    num_samples = 2*k
     return PrototypicalBatchSampler(dataset=dataset,
                                     classes_per_it=classes_per_it,
                                     num_samples=num_samples,
-                                    iterations=args.its)
+                                    episodes=eps)
 
 
-def init_dataloader(args, path):
-    dataset = init_dataset(args, path)
-    sampler = init_sampler(args, dataset)
+def init_dataloader(args, mode):
+    if mode == 'train':
+        dataset = init_dataset(args.tr)
+        sampler = init_sampler(args.n, args.k, args.eps, dataset)
+    elif mode == 'valid':
+        dataset = init_dataset(args.va)
+        sampler = init_sampler(5, 2, args.eps, dataset)
+    elif mode == 'test':
+        dataset = init_dataset(args.te)
+        sampler = init_sampler(5, 2, args.eps, dataset)
     dataloader = torch.utils.data.DataLoader(dataset, batch_sampler=sampler)
     return dataloader
 
@@ -95,24 +102,27 @@ def init_model():
 
 		 
 def train(model, tr_loader, va_loader, args):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adadelta(model.parameters(), lr=args.lr)
 
 	# loop over iterations
-    for _ in range(args.its):
+    for iteration in range(args.its):
         # loop over episodes
         episodes = iter(tr_loader)
         for epi in episodes:
+            print("episode")
             epi[0] = epi[0].reshape(args.n, args.k*2, 224, 224, 3)
-            S = epi[0][:, :args.n, :, :, :]
-            Q = epi[0][:, args.n:, :, :, :]
+            #pdb.set_trace()
+            S = epi[0][:, :args.n, :, :, :].to(device)
+            Q = epi[0][:, args.n:, :, :, :].to(device)
             S = S.transpose(2,4)
             S = S.transpose(3,4)
             Q = Q.transpose(2,4)
             Q = Q.transpose(3,4)
             # embed S/Q
             embedS = torch.zeros(args.n, 4096)         # is there a way to not hardcode this?
-            embedQ = torch.zeros(args.n, args.n, 4096) # '                                  '
+            embedQ = torch.zeros(args.n, args.k, 4096) # '                                  '
             for i in range(S.size(0)):
                 allS = model(S[i])
                 embedS[i] = torch.sum(allS, 0)/len(S[i]) # take average of S to create n prototypes
@@ -129,14 +139,54 @@ def train(model, tr_loader, va_loader, args):
             loss = 0
             for i in range(len(euclid)):
                 for j in range(len(euclid[0])):
-                    for k in range(len(euclid[0][0])):
-                        loss += (1/args.n*args.k)*criterion(euclid[i][j:j+1], torch.tensor([k]))
+                    loss += criterion(euclid[i][j:j+1], torch.tensor([i]))
+            loss = loss*(1/(args.n*args.k))
 
-            #pdb.set_trace() debug
             # backprop and update weights
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
+        # evaluate on dev set once per iteration
+        # loop over episodes
+        avg_arr = []
+        episodes = iter(va_loader)
+        for epi in episodes:
+            epi[0] = epi[0].reshape(args.n, 2*2, 224, 224, 3)
+            S = epi[0][:, :2, :, :, :].to(device)
+            Q = epi[0][:, 2:, :, :, :].to(device)
+            S = S.transpose(2,4)
+            S = S.transpose(3,4)
+            Q = Q.transpose(2,4)
+            Q = Q.transpose(3,4)
+            # embed S/Q
+            embedS = torch.zeros(5, 4096)         # is there a way to not hardcode this?
+            embedQ = torch.zeros(args.n, 2, 4096) # '                                  '
+            for i in range(S.size(0)):
+                allS = model(S[i])
+                embedS[i] = torch.sum(allS, 0)/len(S[i]) # take average of S to create n prototypes
+                embedQ[i] = model(Q[i])
+
+            # find euclidean distance to each S for each Q
+            euclid = torch.zeros(args.n, 2, args.n)
+            for i in range(len(embedQ)):
+                for j in range(len(embedQ[0])):
+                    for k in range(len(embedS)):
+                        euclid[i][j][k] = -1*euclidean_dist(embedQ[i][j], embedS[k])
+            # classify queries to nearest prototype
+            _, idxs = torch.max(euclid, 2)
+            tot = 0
+            acc = 0
+            for i in range(len(idxs)):
+                for j in range(len(idxs[0])):
+                    tot += 1
+                    if idxs[i][j] == i:
+                        acc += 1
+            avg_arr.append(acc/tot)
+        avg_arr = np.asarray(avg_arr)
+        mean = avg_arr.mean()
+        std = avg_arr.std()
+        print(mean, std)
 
 		 
 def test():
@@ -158,23 +208,13 @@ def main():
     # print(basepercent)
 
     # Load data
-    train_loader = init_dataloader(args, args.tr)
-    valid_loader = init_dataloader(args, args.va)
-    test_loader = init_dataloader(args, args.te) 
+    train_loader = init_dataloader(args, "train")
+    valid_loader = init_dataloader(args, "valid")
+    test_loader = init_dataloader(args, "test") 
 
     # Create model
     model = init_model()
     train(model, train_loader, valid_loader, args)
-	
-    #best_state, best_acc, train_loss, train_acc, val_loss, val_acc = result
-    
-	# print("Testing with current model")
-    # test(args, test_loader, model)
-    
-	# model.load_state_dict(best_state)
-    
-	# print("Testing with best model")
-    # test(args, test_loader, model)
 
 if __name__ == "__main__":
     main()
