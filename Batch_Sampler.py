@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import pdb
+import os.path
 
 class PrototypicalBatchSampler(object):
     '''
@@ -11,7 +12,7 @@ class PrototypicalBatchSampler(object):
     __len__ returns the number of episodes per epoch (same as 'self.episodes').
     '''
 
-    def __init__(self, dataset, classes_per_it, num_samples, episodes):
+    def __init__(self, dataset, classes_per_it, num_samples, episodes, name):
         '''
         Initialize the PrototypicalBatchSampler object
         Args:
@@ -19,6 +20,7 @@ class PrototypicalBatchSampler(object):
         - classes_per_it: number of random classes for each episode
         - num_samples: number of samples for each episode for each class (support + query)
         - episodes: number of episodes per iteration
+        - name: where to save numel_per_class 
         '''
         super(PrototypicalBatchSampler, self).__init__()
         self.dataset = dataset
@@ -30,13 +32,17 @@ class PrototypicalBatchSampler(object):
 
         # create a vector numel_per_class and fill it with the number of samples each class has
         self.numel_per_class = np.zeros(len(self.dataset.classes)+1, dtype=int)
-        self.numel_per_class[0] = 0
-        self.numel_per_class[len(self.dataset.classes)] = len(dataset)
-        i = 1
-        for idx in range(len(dataset)-1):
-            if (dataset[idx][1] != dataset[idx+1][1]):
-                self.numel_per_class[i] = idx+1
-                i = i+1
+        if os.path.isfile(name):
+            self.numel_per_class = np.loadtxt(name, dtype=int)
+        else:
+            self.numel_per_class[0] = 0
+            self.numel_per_class[len(self.dataset.classes)] = len(dataset)
+            i = 1
+            for idx in range(len(dataset)-1):
+                if (dataset[idx][1] != dataset[idx+1][1]):
+                    self.numel_per_class[i] = idx+1
+                    i = i+1
+            np.savetxt(name, self.numel_per_class, fmt='%i')
 
     def __iter__(self):
         '''
