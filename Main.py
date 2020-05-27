@@ -183,7 +183,7 @@ def train(model, tr_loader, va_loader, args):
         avg_arr = np.asarray(avg_arr)
         mean = str(avg_arr.mean())
         std = str(avg_arr.std())
-        output = "Mean: " + mean + " " + "Std: " + std
+        output = "Mean: " + mean + " " + "Std: " + std + "\n"
         f.write(output)
 
 		 
