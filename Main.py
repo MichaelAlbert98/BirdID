@@ -103,6 +103,7 @@ def init_model():
 
 		 
 def train(model, tr_loader, va_loader, args):
+    f = open("log.txt", "a")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adadelta(model.parameters(), lr=args.lr)
@@ -184,9 +185,10 @@ def train(model, tr_loader, va_loader, args):
                         acc += 1
             avg_arr.append(acc/tot)
         avg_arr = np.asarray(avg_arr)
-        mean = avg_arr.mean()
-        std = avg_arr.std()
-        print(mean, std)
+        mean = str(avg_arr.mean())
+        std = str(avg_arr.std())
+        output = "Mean: " + mean + " " + "Std: " + std
+        f.write(output)
 
 		 
 def test():
