@@ -81,8 +81,6 @@ def init_model():
 # note: needs to be updated to use permute to get S/Q instead of current method
 # def get_episode(n,k, dataset):
 
-#     #debugging
-#     pdb.set_trace()
 #     num_classes = len(dataset.classes)
 #     C = torch.randperm(num_classes)[:5] # randomly sample n classes
 #     X = torch.LongTensor(n)
@@ -117,7 +115,6 @@ def train(model, tr_loader, va_loader, args):
             number += 1
             print(number)
             epi[0] = epi[0].reshape(args.n, args.k*2, 224, 224, 3)
-            #pdb.set_trace() #debug
             epi[0] = epi[0].permute(0,1,4,2,3)
             S = epi[0][:, :args.k, :, :, :].to(device)
             Q = epi[0][:, args.k:, :, :, :].to(device)
@@ -175,7 +172,6 @@ def train(model, tr_loader, va_loader, args):
                     euclid[i][j] = -1*euclidean_dist(embedQ[i], embedS[j])
 
             # classify queries to nearest prototype
-            pdb.set_trace()
             _, idxs = torch.max(euclid, 1)
             tot = 0
             acc = 0
