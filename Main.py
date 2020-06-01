@@ -21,6 +21,7 @@ import torchvision as tv
 import sys
 import os
 import random
+import matplotlib.pyplot as plt
 import numpy as np
 from Parser import parse_all_args
 from Utils import euclidean_dist
@@ -101,13 +102,15 @@ def init_model():
 
 		 
 def train(model, tr_loader, va_loader, args):
-    f = open("log.txt", "a")
+    f = open("log.txt", "a+")
+    x = []
+    y = []
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adadelta(model.parameters(), lr=args.lr)
 
 	# loop over iterations
-    for _ in range(args.its):
+    for iteration in range(args.its):
         # loop over episodes
         episodes = iter(tr_loader)
         number = 0
@@ -180,11 +183,21 @@ def train(model, tr_loader, va_loader, args):
                     if idxs[i] == i//2:
                         acc += 1
             avg_arr.append(acc/tot)
+
         avg_arr = np.asarray(avg_arr)
-        mean = str(avg_arr.mean())
-        std = str(avg_arr.std())
-        output = "Mean: " + mean + " " + "Std: " + std + "\n"
+        mean = avg_arr.mean()
+        std = avg_arr.std()
+        output = ("Iteration %04d: Mean - %.3f Std - %.3f \n" % (iteration, mean, std))
         f.write(output)
+        x.append(iteration)
+        y.append(mean)
+
+    f.close()
+    plt.plot(x,y)
+    plt.xlabel('Iterations')
+    plt.ylabel('Accuracy')
+    plt.title('Few-shot Learning')
+    plt.savefig("image.png")
 
 		 
 def test():
