@@ -65,10 +65,10 @@ def init_dataloader(args, mode):
         sampler = init_sampler(args.n, args.k, args.eps, dataset, "train")
     elif mode == 'valid':
         dataset = init_dataset(args.va)
-        sampler = init_sampler(5, 2, args.eps, dataset, "valid")
+        sampler = init_sampler(args.n, args.k, args.eps, dataset, "valid")
     elif mode == 'test':
         dataset = init_dataset(args.te)
-        sampler = init_sampler(5, 2, args.eps, dataset, "test")
+        sampler = init_sampler(args.n, args.k, args.eps, dataset, "test")
     dataloader = torch.utils.data.DataLoader(dataset, batch_sampler=sampler)
     return dataloader
 
@@ -154,23 +154,23 @@ def train(model, tr_loader, va_loader, args):
         avg_arr = []
         episodes = iter(va_loader)
         for epi in episodes:
-            epi[0] = epi[0].reshape(args.n, 2*2, 224, 224, 3)
+            epi[0] = epi[0].reshape(args.n, args.k*2, 224, 224, 3)
             epi[0] = epi[0].permute(0,1,4,2,3)
-            S = epi[0][:, :2, :, :, :].to(device)
-            Q = epi[0][:, 2:, :, :, :].to(device)
-            Q = Q.reshape(args.n*2, 3, 224, 224)
+            S = epi[0][:, :args.k, :, :, :].to(device)
+            Q = epi[0][:, args.k:, :, :, :].to(device)
+            Q = Q.reshape(args.n*args.k, 3, 224, 224)
         
             # embed S/Q
             embedS = torch.zeros(5, 4096)         # is there a way to not hardcode this?
-            embedQ = torch.zeros(args.n*2, 4096) # '                                  '
+            embedQ = torch.zeros(args.n*args.k, 4096) # '                                  '
             for i in range(S.size(0)):
-                s = slice(i * 2, (i + 1) * 2)
+                s = slice(i * args.k, (i + 1) * args.k)
                 allS = model(S[i])
                 embedS[i] = torch.sum(allS, 0)/len(S[i]) # take average of S to create n prototypes
                 embedQ[s] = model(Q[s])
 
             # find euclidean distance to each S for each Q
-            euclid = torch.zeros(args.n*2, args.n)
+            euclid = torch.zeros(args.n*args.k, args.n)
             for i in range(len(embedQ)):
                 for j in range(len(embedS)):
                     euclid[i][j] = -1*euclidean_dist(embedQ[i], embedS[j])
@@ -181,7 +181,7 @@ def train(model, tr_loader, va_loader, args):
             acc = 0
             for i in range(len(idxs)):
                     tot += 1
-                    if idxs[i] == i//2:
+                    if idxs[i] == i//args.k:
                         acc += 1
             avg_arr.append(acc/tot)
 
@@ -197,21 +197,59 @@ def train(model, tr_loader, va_loader, args):
     f.close()
     plt.ylim(0,1)
     plt.plot(x,y1, label='Mean')
-    plt.plot(x,y2, labe="Std")
+    plt.plot(x,y2, label="Std")
     plt.xlabel('Iterations')
     plt.ylabel('Percentage')
     plt.title('Few-shot Learning')
+    plt.legend()
     plt.savefig("image.png")
 
 		 
-def test():
-    return None
+def test(model, te_loader, args):
+    # evaluate on test set at end of training
+    # loop over episodes
+    f = open("log.txt", "a+")
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    avg_arr = []
+    episodes = iter(te_loader)
+    for epi in episodes:
+        epi[0] = epi[0].reshape(args.n, args.k*2, 224, 224, 3)
+        epi[0] = epi[0].permute(0,1,4,2,3)
+        S = epi[0][:, :args.k, :, :, :].to(device)
+        Q = epi[0][:, args.k:, :, :, :].to(device)
+        Q = Q.reshape(args.n*args.k, 3, 224, 224)
+    
+        # embed S/Q
+        embedS = torch.zeros(5, 4096)         # is there a way to not hardcode this?
+        embedQ = torch.zeros(args.n*args.k, 4096) # '                                  '
+        for i in range(S.size(0)):
+            s = slice(i * args.k, (i + 1) * args.k)
+            allS = model(S[i])
+            embedS[i] = torch.sum(allS, 0)/len(S[i]) # take average of S to create n prototypes
+            embedQ[s] = model(Q[s])
 
-def eval():
-    return None
-    #for S,Q in my_dev:
-    # embed all images in S to produce n prototypes
-    # embed all images in Q and compute the posterior probabilities
+        # find euclidean distance to each S for each Q
+        euclid = torch.zeros(args.n*args.k, args.n)
+        for i in range(len(embedQ)):
+            for j in range(len(embedS)):
+                euclid[i][j] = -1*euclidean_dist(embedQ[i], embedS[j])
+
+        # classify queries to nearest prototype
+        _, idxs = torch.max(euclid, 1)
+        tot = 0
+        acc = 0
+        for i in range(len(idxs)):
+                tot += 1
+                if idxs[i] == i//5:
+                    acc += 1
+        avg_arr.append(acc/tot)
+
+    avg_arr = np.asarray(avg_arr)
+    mean = avg_arr.mean()
+    std = avg_arr.std()
+    output = ("Testing: Mean - %.3f Std - %.3f \n" % (mean, std))
+    f.write(output)
+    f.close()
 
 def main():
     # Parse arguments
@@ -230,6 +268,7 @@ def main():
     # Create model
     model = init_model(args.pre)
     train(model, train_loader, valid_loader, args)
+    test(model, test_loader, args)
 
 if __name__ == "__main__":
     main()
