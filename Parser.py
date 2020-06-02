@@ -18,9 +18,11 @@ def parse_all_args():
     parser.add_argument("-its",type=int,
                 help="The number of training iterations (int) [default: 100]", default=100)
     parser.add_argument('-eps', type=int,
-                help='number of episodes per iteration, default=100', default=100)
+                help='Number of episodes per iteration, default=100', default=100)
     parser.add_argument('-n', type=int,
-                help='number of classes to use, default=5', default=5)
+                help='Number of classes to use, default=5', default=5)
     parser.add_argument('-k', type=int,
-                help='number of examples per class, default=5', default=5)
+                help='Number of examples per class, default=5', default=5)
+    parser.add_argument('-pre', type=bool,
+                help='Whether to pretrain model on imagenet, default=False', default=False)
     return parser.parse_args()
