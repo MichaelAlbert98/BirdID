@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torch.hub import load_state_dict_from_url
 
 __all__ = [
     'VGG', 'vgg11',
@@ -73,12 +74,18 @@ cfgs = {
 }
 
 
-def _vgg(arch, cfg, batch_norm, progress, **kwargs):
+def _vgg(arch, cfg, batch_norm, pretrained, progress, **kwargs):
+    if pretrained:
+        kwargs['init_weights'] = False
     model = VGG(make_layers(cfgs[cfg], batch_norm=batch_norm), **kwargs)
+    if pretrained:
+        state_dict = load_state_dict_from_url(model_urls[arch],
+                                              progress=progress)
+        model.load_state_dict(state_dict, strict=False)
     return model
 
 
-def vgg11(progress=True, **kwargs):
+def vgg11(pretrained=False, progress=True, **kwargs):
     """VGG 11-layer model (configuration "A") from
     `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_
 
@@ -86,4 +93,4 @@ def vgg11(progress=True, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _vgg('vgg11', 'A', False, progress, **kwargs)
+    return _vgg('vgg11', 'A', False, pretrained, progress, **kwargs)
