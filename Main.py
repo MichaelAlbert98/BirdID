@@ -72,9 +72,9 @@ def init_dataloader(args, mode):
     dataloader = torch.utils.data.DataLoader(dataset, batch_sampler=sampler)
     return dataloader
 
-def init_model():
+def init_model(pretrain):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = vgg11().to(device)
+    model = vgg11(pretrained=pretrain).to(device)
     return model
 
 # k-shot (number of examples per class)
@@ -104,7 +104,8 @@ def init_model():
 def train(model, tr_loader, va_loader, args):
     f = open("log.txt", "a+")
     x = []
-    y = []
+    y1 = []
+    y2 = []
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adadelta(model.parameters(), lr=args.lr)
@@ -190,12 +191,15 @@ def train(model, tr_loader, va_loader, args):
         output = ("Iteration %04d: Mean - %.3f Std - %.3f \n" % (iteration, mean, std))
         f.write(output)
         x.append(iteration)
-        y.append(mean)
+        y1.append(mean)
+        y2.append(std)
 
     f.close()
-    plt.plot(x,y)
+    plt.ylim(0,1)
+    plt.plot(x,y1, label='Mean')
+    plt.plot(x,y2, labe="Std")
     plt.xlabel('Iterations')
-    plt.ylabel('Accuracy')
+    plt.ylabel('Percentage')
     plt.title('Few-shot Learning')
     plt.savefig("image.png")
 
@@ -224,7 +228,7 @@ def main():
     test_loader = init_dataloader(args, "test") 
 
     # Create model
-    model = init_model()
+    model = init_model(args.pre)
     train(model, train_loader, valid_loader, args)
 
 if __name__ == "__main__":
