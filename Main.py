@@ -27,23 +27,6 @@ from Parser import parse_all_args
 from Utils import euclidean_dist
 from Model import vgg11
 from Batch_Sampler import PrototypicalBatchSampler
-# debugging
-import pdb
-
-def baseline(path):
-    # Determine baseline of data
-    currentSize = 0
-    maxSize = 0
-    for dirpath, dirnames, filenames in os.walk(path):
-        for f in filenames:
-            fp = os.path.join(dirpath, f)
-            # skip if it is symbolic link
-            if not os.path.islink(fp):
-                currentSize += 1
-        if currentSize > maxSize:
-            maxSize = currentSize
-            name = filenames
-    return len(name), maxSize
 
 def init_dataset(path):
     dataset = tv.datasets.ImageFolder(root=path,transform=tv.transforms.ToTensor())
@@ -76,31 +59,7 @@ def init_model(pretrain):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = vgg11(pretrained=pretrain).to(device)
     return model
-
-# k-shot (number of examples per class)
-# n-way (number of classes)
-# note: needs to be updated to use permute to get S/Q instead of current method
-# def get_episode(n,k, dataset):
-
-#     num_classes = len(dataset.classes)
-#     C = torch.randperm(num_classes)[:5] # randomly sample n classes
-#     X = torch.LongTensor(n)
-#     for i in range(len(C)):
-# 	    X[i] =  # random.sample(C[i], 2*k) # randomly sample 2*k (image,label) pairs from each class in C
 	 
-#     S = None
-#     for i in range(len(X)):
-#        S[i] = random.sample(X[i], k) # randomly take k of the (image,label) pairs for each class from X (support set)
-	 
-#     Q = None
-#     for i in range(len(X)):
-#         for j in range(len(X[0])):
-#             if X[i][j] not in S[i]:
-#                 Q[i].append(X[i][j]) # take the remaining k classes' data from X (query set)
-
-#     return S,Q
-
-		 
 def train(model, tr_loader, va_loader, args):
     f = open("log.txt", "a+")
     x = []
@@ -161,7 +120,7 @@ def train(model, tr_loader, va_loader, args):
             Q = Q.reshape(args.n*args.k, 3, 224, 224)
         
             # embed S/Q
-            embedS = torch.zeros(5, 4096)         # is there a way to not hardcode this?
+            embedS = torch.zeros(5, 4096)             # is there a way to not hardcode this?
             embedQ = torch.zeros(args.n*args.k, 4096) # '                                  '
             for i in range(S.size(0)):
                 s = slice(i * args.k, (i + 1) * args.k)
@@ -220,7 +179,7 @@ def test(model, te_loader, args):
         Q = Q.reshape(args.n*args.k, 3, 224, 224)
     
         # embed S/Q
-        embedS = torch.zeros(5, 4096)         # is there a way to not hardcode this?
+        embedS = torch.zeros(5, 4096)             # is there a way to not hardcode this?
         embedQ = torch.zeros(args.n*args.k, 4096) # '                                  '
         for i in range(S.size(0)):
             s = slice(i * args.k, (i + 1) * args.k)
@@ -255,17 +214,12 @@ def main():
     # Parse arguments
     args = parse_all_args()
 
-    # # Determine baseline
-    # base = baseline(args.te)
-    # basepercent = base[0]/base[1]*100
-    # print(basepercent)
-
     # Load data
     train_loader = init_dataloader(args, "train")
     valid_loader = init_dataloader(args, "valid")
     test_loader = init_dataloader(args, "test") 
 
-    # Create model
+    # Create and test model
     model = init_model(args.pre)
     train(model, train_loader, valid_loader, args)
     test(model, test_loader, args)
